@@ -1,6 +1,8 @@
 /* 记电 · 界面层：DOM 渲染与事件绑定
-   凭据来自 DJ.auth（内存/会话级），本层只负责取用，不做任何持久化。
-   每条记录会带上：上传者(by)、上传时间戳(uploaded_at)、公网 IP(ip_public)、内网地址(ip_local)。 */
+   - 登录采用弹窗形态：未登录时卡片里只有一个「登录」按钮，点开弹窗；
+     登录后卡片里直接显示用户信息（身份由密码解析得出，无需用户选择）。
+   - 凭据来自 DJ.auth（内存 / 会话级），本层只负责取用，不做任何持久化。
+   - 每条记录会带上：上传者(by)、上传时间戳(uploaded_at)、公网 IP(ip_public)、内网地址(ip_local)。 */
 (function (global) {
   'use strict';
   var DJ = global.DJ = global.DJ || {};
@@ -26,12 +28,16 @@
     el.className = 'dj-hint' + (ok === true ? ' dj-ok' : ok === false ? ' dj-warn' : '');
     el.textContent = text || '';
   }
-  function memberNames() {
-    var list = DJ.auth.members ? DJ.auth.members() : [];
-    return list.length ? list : C.members;
-  }
   function shortTime(iso) {
     return String(iso || '').slice(5, 16).replace('T', ' ');
+  }
+  function loggedIn() {
+    var c = DJ.auth.current();
+    return !!(c && c.token);
+  }
+  function currentBy() {
+    var c = DJ.auth.current();
+    return c ? (c.by || '未署名') : '';
   }
 
   // ---------------- 上传环境（上传者 / 时间戳 / IP） ----------------
@@ -60,7 +66,7 @@
   }
 
   function stampEnv(rec, env) {
-    rec.by = rec.by || (DJ.auth.by() || '');
+    rec.by = rec.by || currentBy();
     rec.uploaded_at = new Date().toISOString();
     if (env) {
       rec.ip_public = env.public || '';
@@ -92,59 +98,83 @@
     persist();
   }
 
-  // ---------------- 登录 ----------------
+  // ---------------- 登录（弹窗） ----------------
   function renderLogin() {
-    var sel = $('loginUser');
-    if (sel) {
-      var names = memberNames();
-      if (sel.options.length !== names.length) {
-        sel.innerHTML = names.map(function (m) {
-          return '<option value="' + esc(m) + '">' + esc(m) + '</option>';
-        }).join('');
-      }
-      if (state.pref.me) sel.value = state.pref.me;
+    var box = $('loginState');
+    if (!box) return;
+
+    if (loggedIn()) {
+      var name = currentBy();
+      box.innerHTML =
+        '<div class="dj-user">' +
+          '<span class="dj-user-avatar">' + esc(name.slice(0, 1)) + '</span>' +
+          '<span class="dj-user-info"><b>' + esc(name) + '</b>' +
+            '<small>凭据只存在于本会话，未写入本机存储</small></span>' +
+        '</div>' +
+        '<div class="dj-actions">' +
+          '<button class="neu-btn" type="button" id="btnLogout">退出登录</button>' +
+        '</div>';
+      var lo = $('btnLogout');
+      if (lo) lo.addEventListener('click', onLogout);
+      setHint('loginHint', '');
+    } else {
+      box.innerHTML =
+        '<p class="about-text">尚未登录 —— 登录后才能写入云端账本。</p>' +
+        '<div class="dj-actions">' +
+          '<button class="neu-btn primary" type="button" id="btnOpenLogin">登录</button>' +
+        '</div>';
+      var op = $('btnOpenLogin');
+      if (op) op.addEventListener('click', openLogin);
+      setHint('loginHint', DJ.auth.enabled()
+        ? ''
+        : '尚未配置密码名单：此时登录框会把输入直接当作完整 token 使用。', false);
+      if (DJ.auth.enabled()) setHint('loginHint', '');
     }
 
-    var cur = DJ.auth.current();
-    var on = !!(cur && cur.token);
-    $('loginState').innerHTML = on
-      ? '已登录：<span class="dj-ok">' + esc(cur.by || '未署名') + '</span> · 凭据仅存在于本会话，未写入本机存储'
-      : (DJ.auth.enabled()
-          ? '未登录 —— 请输入发给你的登录密码。'
-          : '尚未配置名单：此时登录框会把输入直接当作完整 token 使用。'
-            + '正式使用前请运行 <code>node tools/make-passwords.js … --write</code>。');
-    $('btnLogin').disabled = on;
-    $('btnLogout').disabled = !on;
-    $('loginPwd').disabled = on;
-    $('loginUser').disabled = on;
+    renderEntryBy();
+    renderSync();
+  }
+
+  function openLogin() {
+    var m = $('loginModal');
+    if (!m) return;
+    m.hidden = false;
+    setHint('loginModalHint', '');
+    var p = $('loginPwd');
+    if (p) { p.value = ''; setTimeout(function () { p.focus(); }, 30); }
+  }
+
+  function closeLogin() {
+    var m = $('loginModal');
+    if (!m) return;
+    m.hidden = true;
+    var p = $('loginPwd');
+    if (p) p.value = '';
+    setHint('loginModalHint', '');
   }
 
   function onLoginSubmit(ev) {
     ev.preventDefault();
-    var pwd = $('loginPwd').value;
-    setHint('loginHint', '正在校验…');
+    var pwd = $('loginPwd') ? $('loginPwd').value : '';
+    setHint('loginModalHint', '正在校验…');
     DJ.auth.login(pwd).then(function (r) {
-      if (!r.ok) { setHint('loginHint', r.reason, false); return; }
-      $('loginPwd').value = '';
-      setHint('loginHint', '登录成功：' + r.by, true);
-      if (r.by && r.by !== '未署名') {
-        state.pref.me = r.by;
-        DJ.store.setPref(state.pref);
-        $('fBy').value = r.by;
-      } else {
-        $('fBy').value = memberNames()[0] || '';
-      }
+      if (!r.ok) { setHint('loginModalHint', r.reason, false); return; }
+      closeLogin();
       renderLogin();
-      renderSync();
+      setHint('loginHint', '已登录为 ' + (r.by || '未署名'), true);
       envSnapshot();
     });
   }
 
   function onLogout() {
     DJ.auth.logout();
-    setHint('loginHint', '已退出登录', true);
     renderLogin();
-    renderSync();
+    setHint('loginHint', '已退出登录', true);
+  }
+
+  function renderEntryBy() {
+    var el = $('entryBy');
+    if (el) el.value = loggedIn() ? currentBy() : '';
   }
 
   // ---------------- 统计卡 ----------------
@@ -236,20 +266,10 @@
 
   // ---------------- 录入表单 ----------------
   function initForm() {
-    var sel = $('fBy');
-    sel.innerHTML = memberNames().map(function (m) {
-      return '<option value="' + esc(m) + '">' + esc(m) + '</option>';
-    }).join('');
-    if (state.pref.me && memberNames().indexOf(state.pref.me) >= 0) sel.value = state.pref.me;
     $('fDate').value = todayStr();
     $('fTopup').value = '0';
-
     $('fBalance').addEventListener('input', updateEntryHint);
     $('entryForm').addEventListener('submit', onEntrySubmit);
-    sel.addEventListener('change', function () {
-      state.pref.me = sel.value;
-      DJ.store.setPref(state.pref);
-    });
   }
 
   function updateEntryHint() {
@@ -281,7 +301,7 @@
         slot: slot,
         balance: balance,
         topup: topup,
-        by: $('fBy').value,
+        by: currentBy(),
         note: $('fNote').value.trim()
       }, env);
       upsertAll([rec]);
@@ -348,7 +368,7 @@
     envSnapshot().then(function (env) {
       rs.forEach(function (r) { stampEnv(r, env); });
       upsertAll(rs);
-      setHint('ioHint', '已导入 ' + rs.length + ' 条记录（上传者 ' + (DJ.auth.by() || '未署名') +
+      setHint('ioHint', '已导入 ' + rs.length + ' 条记录（上传者 ' + (currentBy() || '未署名') +
         '，公网 IP ' + ((env && env.public) || '未知') + '）', true);
       state.rows = [];
       renderPreview();
@@ -363,10 +383,9 @@
   function renderSync() {
     if (!$('sRepo')) return;
     $('sRepo').value = state.pref.repo || C.repo;
-    var cur = DJ.auth.current();
-    var on = !!(cur && cur.token);
+    var on = loggedIn();
     $('syncState').innerHTML = on
-      ? '已登录（' + esc(cur.by || '未署名') + '）· 云端仓库：' + esc(state.pref.repo || C.repo)
+      ? '已登录（' + esc(currentBy()) + '）· 云端仓库：' + esc(state.pref.repo || C.repo)
       : '未登录 —— 目前只操作本机缓存；登录后才能从云端拉取或推送。';
     $('btnPull').disabled = !on;
     $('btnPush').disabled = !on;
@@ -447,7 +466,11 @@
   // ---------------- 启动 ----------------
   function bind() {
     $('loginForm').addEventListener('submit', onLoginSubmit);
-    $('btnLogout').addEventListener('click', onLogout);
+    $('btnCloseLogin').addEventListener('click', closeLogin);
+    $('loginMask').addEventListener('click', closeLogin);
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && $('loginModal') && !$('loginModal').hidden) closeLogin();
+    });
 
     $('btnParse').addEventListener('click', onParse);
     $('btnImport').addEventListener('click', onImport);
@@ -486,13 +509,14 @@
     initForm();
     bind();
     renderLogin();
-    renderSync();
     refresh();
-    // 后台先采一次上传环境，录入时就不必等
     envSnapshot();
   }
 
-  DJ.ui = { init: init, state: state, refresh: refresh, renderLogin: renderLogin, renderSync: renderSync, stampEnv: stampEnv };
+  DJ.ui = {
+    init: init, state: state, refresh: refresh, renderLogin: renderLogin,
+    renderSync: renderSync, stampEnv: stampEnv, openLogin: openLogin, closeLogin: closeLogin
+  };
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();

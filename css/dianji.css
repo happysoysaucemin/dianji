@@ -1,7 +1,7 @@
 /* 记电页面补充样式
-   站点 1551114.xyz/css/style.css 提供基础组件（container / card / card-title / about-text /
-   neu-btn / back-link / site-header / site-title / site-footer 等），
-   本文件只补充记电专属的表单、统计卡、流水表与图表样式，不改动站点任何既有文件。 */
+   站点样式由本项目自带的 css/style.css 提供（container / card / card-title /
+   about-text / neu-btn / back-link / site-header / site-title / site-footer 等），
+   本文件只补充记电专属的表单、统计卡、流水表、图表与登录弹窗样式。 */
 
 .header-sub { margin: 6px 0 0; opacity: .75; font-size: 14px; }
 .dj-hint { font-size: 13px; opacity: .75; margin: 8px 0 0; }
@@ -50,6 +50,7 @@
   background: rgba(127, 127, 127, .06);
   color: inherit;
 }
+.dj-field input[readonly] { opacity: .85; cursor: default; }
 .dj-textarea {
   width: 100%;
   margin-top: 8px;
@@ -97,3 +98,61 @@ button.dj-del {
 /* ---------- 折叠区 ---------- */
 .dj-details summary { cursor: pointer; opacity: .85; font-size: 14px; margin: 6px 0; }
 .dj-details .dj-field { margin-top: 8px; }
+
+/* ---------- 已登录的用户信息 ---------- */
+.dj-user { display: flex; align-items: center; gap: 12px; }
+.dj-user-avatar {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary, #4a90d9);
+}
+.dj-user-info { display: flex; flex-direction: column; line-height: 1.35; }
+.dj-user-info b { font-size: 17px; }
+.dj-user-info small { font-size: 12px; opacity: .7; margin-top: 2px; }
+
+/* ---------- 登录弹窗 ---------- */
+.dj-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.dj-modal[hidden] { display: none; }
+.dj-modal-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .5);
+}
+.dj-modal-box {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 20px 20px 16px;
+  border-radius: var(--radius, 12px);
+  border: 1px solid rgba(127, 127, 127, .28);
+  background: var(--bg, #fff);
+  color: inherit;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+  animation: dj-modal-in .16s ease-out;
+}
+@keyframes dj-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+.dj-modal-title { margin: 0 0 14px; font-size: 18px; }
+.dj-modal-box .dj-form { grid-template-columns: 1fr; }
+.dj-modal-box .dj-actions { margin-top: 14px; }
