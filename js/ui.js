@@ -138,7 +138,6 @@
       if (DJ.auth.enabled()) setHint('loginHint', '');
     }
 
-    renderEntryBy();
     renderSync();
   }
 
@@ -235,11 +234,6 @@
     DJ.auth.logout();
     renderLogin();
     setHint('loginHint', '已退出登录', true);
-  }
-
-  function renderEntryBy() {
-    var el = $('entryBy');
-    if (el) el.value = loggedIn() ? currentBy() : '';
   }
 
   // ---------------- 统计卡 ----------------

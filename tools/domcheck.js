@@ -95,7 +95,6 @@ check('登录弹窗默认带 hidden 属性', /id="loginModal"[^>]*\shidden/.test
 check('弹窗内有密码框', /id="loginPwd"/.test(html));
 check('密码框启用浏览器自动填充', /id="loginPwd"[^>]*autocomplete="current-password"/.test(html));
 check('已移除成员下拉 fBy', !/id="fBy"/.test(html));
-check('录入人框只读', /id="entryBy"[^>]*readonly/.test(html));
 
 // ---- 5) 断言渲染结果 ----
 console.log('');
@@ -112,7 +111,6 @@ check('统计卡已渲染', !!els.statGrid && els.statGrid.innerHTML.length > 0,
   els.statGrid ? (els.statGrid.innerHTML.length + ' 字符') : '');
 check('图表容器已渲染', !!els.barChart && els.barChart.innerHTML.length > 0);
 check('流水表已渲染', !!els.ledgerWrap && els.ledgerWrap.innerHTML.length > 0);
-check('录入人框初始为空', !!els.entryBy && els.entryBy.value === '');
 
 console.log('');
 console.log(problems.length === 0
