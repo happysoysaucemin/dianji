@@ -199,3 +199,13 @@ button.dj-del {
 .dj-inline-text { opacity: .82; }
 .dj-inline-name { font-size: 17px; }
 .dj-inline .dj-user-avatar { width: 34px; height: 34px; font-size: 16px; }
+
+/* 仅用于让浏览器把密码与用户名配对，不参与交互与视觉 */
+.dj-offscreen {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

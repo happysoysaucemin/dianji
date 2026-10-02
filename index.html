@@ -138,12 +138,16 @@
     <div class="dj-modal-box" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
         <h3 class="dj-modal-title" id="loginModalTitle">登录</h3>
         <form class="dj-form" id="loginForm" autocomplete="on">
+            <!-- 浏览器要把密码与用户名配对才肯保存，这里放一个不参与交互的 username 字段；
+                 提交前会用密码解析出的身份把它填好 -->
+            <input type="text" id="loginUser" name="username" autocomplete="username"
+                   class="dj-offscreen" tabindex="-1">
             <label class="dj-field dj-field-wide"><span>登录密码</span>
                 <input type="password" id="loginPwd" name="password" autocomplete="current-password"
                        placeholder="粘贴发给你的那串登录密码">
             </label>
             <p class="dj-hint dj-field-wide">
-                身份由密码自动解析，无需选择。勾选浏览器的「记住密码」，下次自动填充即可。
+                身份由密码自动解析，无需选择。浏览器若询问是否保存密码，选「保存」即可下次自动填充。
             </p>
             <div class="dj-actions dj-field-wide">
                 <button class="neu-btn primary" type="submit" id="btnLogin">登录</button>

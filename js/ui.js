@@ -160,14 +160,40 @@
   function onLoginSubmit(ev) {
     ev.preventDefault();
     var pwd = $('loginPwd') ? $('loginPwd').value : '';
+    var un = $('loginUser');
+
+    // 先把身份解出来填进 username 字段（纯本地同步解析）：
+    // 浏览器只有在能配到用户名时才愿意把这份密码存进密码管理器。
+    try {
+      var guess = DJ.auth.decodePassword ? DJ.auth.decodePassword(pwd) : null;
+      if (un && guess && guess.by) un.value = guess.by;
+    } catch (e) { /* ignore */ }
+
     setHint('loginModalHint', '正在校验…');
     DJ.auth.login(pwd).then(function (r) {
       if (!r.ok) { setHint('loginModalHint', r.reason, false); return; }
+      if (un && r.by) un.value = r.by;
+      rememberPassword(r.by, pwd);
       closeLogin();
       renderLogin();
       setHint('loginHint', '已登录为 ' + (r.by || '未署名'), true);
       envSnapshot();
     });
+  }
+
+  /** 主动请浏览器保存密码。表单提交被 preventDefault 拦掉后，浏览器不会自己弹保存提示，
+   *  必须走 Credential Management API —— 它只在安全上下文（HTTPS / localhost）可用。 */
+  function rememberPassword(name, pwd) {
+    try {
+      if (!pwd) return;
+      if (typeof navigator === 'undefined' || !navigator.credentials) return;
+      if (typeof PasswordCredential === 'undefined') return;
+      navigator.credentials.store(new PasswordCredential({
+        id: name || 'dianji',
+        name: name || '403记账本',
+        password: pwd
+      }));
+    } catch (e) { /* 非 HTTPS 或浏览器不支持，忽略 */ }
   }
 
   function onLogout() {
