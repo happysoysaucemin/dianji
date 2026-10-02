@@ -39,8 +39,11 @@ function makeEl(id) {
 
 const els = {};
 ids.forEach((id) => { els[id] = makeEl(id); });
-// 由 ui.js 动态生成、不在 index.html 里的节点
-['btnOpenLogin', 'btnLogout'].forEach((id) => { els[id] = makeEl(id); });
+// 由 ui.js 动态生成、不在 index.html 里的节点：直接从 ui.js 里扫 id="..." 收集
+const uiSrc = fs.readFileSync(path.join(ROOT, 'js', 'ui.js'), 'utf8');
+[...uiSrc.matchAll(/id="([A-Za-z0-9_]+)"/g)].forEach((m) => {
+  if (!els[m[1]]) els[m[1]] = makeEl(m[1]);
+});
 
 global.document = {
   readyState: 'complete',

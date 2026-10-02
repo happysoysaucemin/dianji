@@ -116,8 +116,11 @@
         '<div class="dj-inline">' +
           '<span class="dj-user-avatar">' + esc(name.slice(0, 1)) + '</span>' +
           '<b class="dj-inline-name">' + esc(name) + '</b>' +
+          '<button class="neu-btn primary" type="button" id="btnInlineSync">同步数据</button>' +
           '<button class="neu-btn" type="button" id="btnLogout">退出登录</button>' +
         '</div>';
+      var sy = $('btnInlineSync');
+      if (sy) sy.addEventListener('click', function () { onSync(this); });
       var lo = $('btnLogout');
       if (lo) lo.addEventListener('click', onLogout);
       setHint('loginHint', '');
@@ -211,6 +214,21 @@
         password: pwd
       }));
     } catch (e) { /* 非 HTTPS 或浏览器不支持，忽略 */ }
+  }
+
+  /** 一键同步：先把云端并入本机、再把合并结果推回去（失败不影响本机数据） */
+  function onSync(btn) {
+    return withBusy(btn, function () {
+      var cfg = readSyncCfg();
+      if (!cfg.pat) throw new Error('请先登录');
+      return DJ.store.push(cfg, state.data).then(function (merged) {
+        state.data = merged;
+        persist();
+        setHint('loginHint', '同步完成（共 ' + (merged.readings || []).length + ' 条）', true);
+      }).catch(function (e) {
+        setHint('loginHint', '同步失败：' + (e && e.message ? e.message : e), false);
+      });
+    });
   }
 
   function onLogout() {
@@ -580,7 +598,7 @@
 
   DJ.ui = {
     init: init, state: state, refresh: refresh, renderLogin: renderLogin,
-    renderSync: renderSync, stampEnv: stampEnv, openLogin: openLogin, closeLogin: closeLogin, autoPull: autoPull
+    renderSync: renderSync, stampEnv: stampEnv, openLogin: openLogin, closeLogin: closeLogin, autoPull: autoPull, onSync: onSync
   };
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
