@@ -213,6 +213,20 @@ check('删除后按剩余序列重算消耗',
   DJ.calc.round2(alive[1].consumed) === DJ.calc.round2(106.9 - 87.8),
   alive[1].consumed);
 
+// ---- 仅充值（balance 为空）----
+var onlyTopup = [
+  { id: '2026-09-23T07:00', recorded_at: '2026-09-23T07:00+08:00', balance: 6.9, topup: 100 },
+  { id: '2026-09-23T12:00', recorded_at: '2026-09-23T12:00+08:00', balance: null, topup: 50 },
+  { id: '2026-09-24T07:00', recorded_at: '2026-09-24T07:00+08:00', balance: 150.0 }
+];
+var ot = DJ.calc.enrich(onlyTopup);
+check('仅充值：有效余额 = 上一条 + 本次充值', ot[1].effective === 156.9, ot[1].effective);
+check('仅充值：本期消耗留空', ot[1].consumed === null, ot[1].consumed);
+check('仅充值：标记 noReading', ot[1].noReading === true);
+check('仅充值：后续记录仍能继续算消耗',
+  DJ.calc.round2(ot[2].consumed) === DJ.calc.round2(156.9 - 150.0), ot[2].consumed);
+check('正常记录的 noReading 为 false', ot[0].noReading === false && ot[2].noReading === false);
+
 // ================= 异步部分（同一条链，避免 fetch mock 相互覆盖）=================
 var loginOk = 0, byMatched = 0, wrongRejected = 0;
 

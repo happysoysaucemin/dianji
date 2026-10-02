@@ -35,10 +35,18 @@
     });
     var prev = null;
     return sortReadings(src).map(function (src2) {
-      var balance = Number(src2.balance) || 0;
+      // 只提交充值、没抄表时 balance 为空：以上一条余额为基准加上本次充值
+      var hasReading = !(src2.balance === null || src2.balance === undefined || src2.balance === '');
+      var balance = hasReading ? Number(src2.balance) : null;
       var topup = Number(src2.topup) || 0;
-      var effective = round2(balance + topup);
-      var consumed = prev === null ? null : round2(prev.effective - balance);
+      var effective, consumed;
+      if (hasReading) {
+        effective = round2(balance + topup);
+        consumed = prev === null ? null : round2(prev.effective - balance);
+      } else {
+        effective = round2((prev ? prev.effective : 0) + topup);
+        consumed = null;
+      }
       var item = {
         id: src2.id || src2.recorded_at,
         recorded_at: src2.recorded_at,
@@ -49,7 +57,8 @@
         note: src2.note || '',
         effective: effective,
         consumed: consumed,
-        anomaly: consumed !== null && consumed < -0.01   // 余额反而变多 → 可能漏记充值
+        noReading: !hasReading,
+        anomaly: consumed !== null && consumed < -0.01
       };
       prev = item;
       return item;

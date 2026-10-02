@@ -15,7 +15,6 @@
 
     <header class="site-header">
         <h1 class="site-title">403记账本</h1>
-        <p class="header-sub">预付费电表余额台账 · 单位：度（1 度 = 0.5 元）</p>
     </header>
 
     <main>
@@ -51,7 +50,7 @@
                     </select>
                 </label>
                 <label class="dj-field"><span>电表余额（度）</span>
-                    <input type="number" id="fBalance" step="0.1" inputmode="decimal" placeholder="42.3" required>
+                    <input type="number" id="fBalance" step="0.1" inputmode="decimal" placeholder="42.3（只充值可不填）">
                 </label>
                 <label class="dj-field"><span>本次充值（度）</span>
                     <input type="number" id="fTopup" step="0.1" inputmode="decimal" value="0">
@@ -107,7 +106,7 @@
             <p class="about-text" id="syncState"></p>
 
             <details class="dj-details">
-                <summary>数据仓库设置（不涉及任何凭据）</summary>
+                <summary>数据仓库设置</summary>
                 <label class="dj-field"><span>数据仓库（用户名/仓库名）</span>
                     <input type="text" id="sRepo" placeholder="happysoysaucemin/dateofhappy">
                 </label>
@@ -117,9 +116,6 @@
                     <button class="neu-btn" type="button" id="btnPull">从云端拉取</button>
                     <button class="neu-btn" type="button" id="btnPush">推送到云端</button>
                 </div>
-                <p class="dj-hint">
-                    写入凭据来自登录，不在本页存储。换一台设备时，只需重新登录一次。
-                </p>
             </details>
 
             <div class="dj-actions">

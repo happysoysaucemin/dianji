@@ -188,3 +188,14 @@ button.dj-del {
   padding: 13px 34px;
   font-size: 15px;
 }
+
+/* ---------- 行内排布（登录态与未登录态都是「文字 + 按钮」同一行） ---------- */
+.dj-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dj-inline-text { opacity: .82; }
+.dj-inline-name { font-size: 17px; }
+.dj-inline .dj-user-avatar { width: 34px; height: 34px; font-size: 16px; }

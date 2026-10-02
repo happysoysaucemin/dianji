@@ -113,12 +113,9 @@
     if (loggedIn()) {
       var name = currentBy();
       box.innerHTML =
-        '<div class="dj-user">' +
+        '<div class="dj-inline">' +
           '<span class="dj-user-avatar">' + esc(name.slice(0, 1)) + '</span>' +
-          '<span class="dj-user-info"><b>' + esc(name) + '</b>' +
-            '<small>凭据只存在于本会话，未写入本机存储</small></span>' +
-        '</div>' +
-        '<div class="dj-actions">' +
+          '<b class="dj-inline-name">' + esc(name) + '</b>' +
           '<button class="neu-btn" type="button" id="btnLogout">退出登录</button>' +
         '</div>';
       var lo = $('btnLogout');
@@ -126,8 +123,8 @@
       setHint('loginHint', '');
     } else {
       box.innerHTML =
-        '<p class="about-text">尚未登录 —— 登录后才能写入云端账本。</p>' +
-        '<div class="dj-actions">' +
+        '<div class="dj-inline">' +
+          '<span class="dj-inline-text">尚未登录 —— 登录后才能写入云端账本</span>' +
           '<button class="neu-btn primary" type="button" id="btnOpenLogin">登录</button>' +
         '</div>';
       var op = $('btnOpenLogin');
@@ -212,7 +209,6 @@
     html.push(card('当前余额', deg(st.current), alert, fmtNum(U.toCny(st.current, price)) + ' 元'));
     html.push(card('近 7 日均耗', deg(st.avg7, '度/天'), false, fmtNum(U.toCny(st.avg7, price)) + ' 元/天'));
     html.push(card('预计可用', st.daysLeft === null ? '—' : fmtNum(st.daysLeft, 1) + '<small>天</small>', alert));
-    html.push(card('预计耗尽', st.emptyDateStr || '—', alert, alert ? '该充值了' : ''));
     html.push(card('本月充值', deg(st.monthTopup), false, fmtNum(U.toCny(st.monthTopup, price)) + ' 元'));
     html.push(card('本月消耗', deg(st.monthConsumed), false, fmtNum(U.toCny(st.monthConsumed, price)) + ' 元'));
     box.innerHTML = html.join('');
@@ -255,7 +251,7 @@
       h.push('<tr' + (x.anomaly ? ' class="dj-bad"' : '') + '>');
       h.push('<td>' + esc(String(x.recorded_at).slice(0, 10)) + '</td>');
       h.push('<td>' + (x.slot === 'pm' ? '晚' : '早') + '</td>');
-      h.push('<td>' + fmtNum(x.balance) + '</td>');
+      h.push('<td>' + (x.noReading ? '<span class="dj-hint">仅充值</span>' : fmtNum(x.balance)) + '</td>');
       h.push('<td>' + (x.topup ? fmtNum(x.topup) : '') + '</td>');
       h.push('<td>' + fmtNum(x.effective) + '</td>');
       h.push('<td>' + (x.consumed === null ? '—' : fmtNum(x.consumed)) + '</td>');
@@ -282,8 +278,14 @@
   }
 
   function updateEntryHint() {
-    var bal = parseFloat($('fBalance').value);
-    if (!isFinite(bal) || !state.enr.length) { setHint('entryHint', ''); return; }
+    var raw = $('fBalance').value.trim();
+    var bal = parseFloat(raw);
+    if (raw === '' || !isFinite(bal)) {
+      var top = parseFloat($('fTopup').value) || 0;
+      setHint('entryHint', top > 0 ? '仅充值：将以上一条余额 + ' + fmtNum(top) + ' 度推算，不计本期消耗' : '');
+      return;
+    }
+    if (!state.enr.length) { setHint('entryHint', ''); return; }
     var prev = state.enr[state.enr.length - 1];
     var diff = U.round2(prev.effective - bal);
     setHint('entryHint',
@@ -295,9 +297,15 @@
     ev.preventDefault();
     var date = $('fDate').value;
     var slot = $('fSlot').value;
-    var balance = parseFloat($('fBalance').value);
+    var rawBalance = $('fBalance').value.trim();
+    var hasReading = rawBalance !== '' && isFinite(parseFloat(rawBalance));
+    var balance = hasReading ? parseFloat(rawBalance) : null;
     var topup = parseFloat($('fTopup').value) || 0;
-    if (!date || !isFinite(balance)) { setHint('entryHint', '日期和余额必填', false); return; }
+    if (!date) { setHint('entryHint', '日期必填', false); return; }
+    if (!hasReading && !(topup > 0)) {
+      setHint('entryHint', '请填写电表余额；若本次只是充值，请至少填上充值额度', false);
+      return;
+    }
 
     var hour = U.pad2(C.slotHour[slot] != null ? C.slotHour[slot] : 7);
     var stamp = date + 'T' + hour + ':00';
@@ -317,8 +325,9 @@
       $('fBalance').value = '';
       $('fTopup').value = '0';
       $('fNote').value = '';
-      setHint('entryHint', '已保存 ' + date + ' ' + (slot === 'pm' ? '晚' : '早') +
-        ' 的记录（上传者 ' + (rec.by || '未署名') + '，公网 IP ' + (rec.ip_public || '未知') + '）', true);
+      setHint('entryHint', '已保存 ' + date + ' ' + (slot === 'pm' ? '晚' : '早') + ' 的记录'
+        + (hasReading ? '' : '（仅充值，未抄表）')
+        + '（上传者 ' + (rec.by || '未署名') + '，公网 IP ' + (rec.ip_public || '未知') + '）', true);
     });
   }
 
