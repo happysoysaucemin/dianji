@@ -156,3 +156,35 @@ button.dj-del {
 .dj-modal-title { margin: 0 0 14px; font-size: 18px; }
 .dj-modal-box .dj-form { grid-template-columns: 1fr; }
 .dj-modal-box .dj-actions { margin-top: 14px; }
+
+/* ---------- 主操作按钮：改为实心 ----------
+   站点用的是新拟态（neumorphism）风格：按钮 background 与页面背景同为 --bg，
+   只靠双向阴影凸起。在浅色底上这会让按钮淡化到"看起来只是一行紫字"，
+   关键操作（登录 / 解析 / 保存 / 推送…）必须一眼可见，因此覆盖为实心填充。 */
+.dj-actions .neu-btn.primary,
+.neu-btn.solid {
+  background: var(--primary, #6d5dfc);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(109, 93, 252, .38);
+}
+.dj-actions .neu-btn.primary:hover,
+.neu-btn.solid:hover {
+  color: #fff;
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.dj-actions .neu-btn.primary:active,
+.neu-btn.solid:active {
+  transform: translateY(0);
+  filter: brightness(.96);
+}
+/* 次级按钮（取消 / 导出…）保持新拟态，但补一点边框让轮廓清晰 */
+.dj-actions .neu-btn:not(.primary) {
+  border: 1px solid rgba(127, 127, 127, .22);
+}
+/* 未登录卡片里的登录按钮单独放大一点，作为主要入口 */
+#loginState .neu-btn.primary {
+  padding: 13px 34px;
+  font-size: 15px;
+}
