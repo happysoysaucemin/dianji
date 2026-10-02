@@ -1,0 +1,13 @@
+{
+  "name": "dianji",
+  "version": "1.0.0",
+  "private": true,
+  "description": "记电 · 预付费电表余额台账（静态页托管在 GitHub Pages，数据存 GitHub 私有仓库）",
+  "scripts": {
+    "test": "node tools/selftest.js",
+    "netcheck": "node tools/netcheck.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

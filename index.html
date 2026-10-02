@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记电 | 快乐的酱油的网站</title>
+    <!-- 站点根样式：与本仓库其它子项目（mcmod / clashAAdd）引用方式一致 -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- 本页补充样式 -->
+    <link rel="stylesheet" href="css/dianji.css">
+</head>
+<body>
+
+<div class="container">
+
+    <header class="site-header">
+        <h1 class="site-title">记电</h1>
+        <p class="header-sub">预付费电表余额台账 · 单位：度（1 度 = 0.5 元）</p>
+    </header>
+
+    <main>
+
+        <a class="back-link" href="https://1551114.xyz">← 返回主页</a>
+
+        <!-- 登录（本页唯一的权限入口） -->
+        <section class="card" id="loginCard">
+            <h2 class="card-title">登录</h2>
+            <p class="about-text" id="loginState"></p>
+            <form class="dj-form" id="loginForm" autocomplete="on">
+                <label class="dj-field"><span>成员</span>
+                    <select id="loginUser" name="username" autocomplete="username"></select>
+                </label>
+                <label class="dj-field"><span>登录密码</span>
+                    <input type="password" id="loginPwd" name="password" autocomplete="current-password"
+                           placeholder="请输入发给你的登录密码">
+                </label>
+                <p class="dj-hint dj-field-wide">
+                    密码只在本机比对摘要（不会发往任何服务器），比对通过后才还原出写入凭据并请求 GitHub。
+                    勾选浏览器的「记住密码」，下次打开自动填充就不用再手输。
+                </p>
+                <div class="dj-actions dj-field-wide">
+                    <button class="neu-btn primary" type="submit" id="btnLogin">登录</button>
+                    <button class="neu-btn" type="button" id="btnLogout">退出登录</button>
+                </div>
+            </form>
+            <p class="dj-hint" id="loginHint"></p>
+        </section>
+
+        <!-- 当前状态 -->
+        <section class="card">
+            <h2 class="card-title">当前状态</h2>
+            <div class="dj-stats" id="statGrid"></div>
+            <p class="dj-hint" id="statHint"></p>
+            <p class="dj-hint" id="memberStats"></p>
+        </section>
+
+        <!-- 录入 -->
+        <section class="card">
+            <h2 class="card-title">录入抄表</h2>
+            <form class="dj-form" id="entryForm">
+                <label class="dj-field"><span>日期</span>
+                    <input type="date" id="fDate" required>
+                </label>
+                <label class="dj-field"><span>时段</span>
+                    <select id="fSlot">
+                        <option value="am">早</option>
+                        <option value="pm">晚</option>
+                    </select>
+                </label>
+                <label class="dj-field"><span>电表余额（度）</span>
+                    <input type="number" id="fBalance" step="0.1" inputmode="decimal" placeholder="42.3" required>
+                </label>
+                <label class="dj-field"><span>本次充值（度）</span>
+                    <input type="number" id="fTopup" step="0.1" inputmode="decimal" value="0">
+                </label>
+                <label class="dj-field"><span>录入人</span>
+                    <select id="fBy"></select>
+                </label>
+                <label class="dj-field dj-field-wide"><span>备注</span>
+                    <input type="text" id="fNote" placeholder="可选，例如「充值 100 度」">
+                </label>
+                <p class="dj-hint dj-field-wide" id="entryHint"></p>
+                <p class="dj-hint dj-field-wide" id="envHint"></p>
+                <div class="dj-actions dj-field-wide">
+                    <button class="neu-btn primary" type="submit">保存这条</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- 批量粘贴 -->
+        <section class="card">
+            <h2 class="card-title">批量粘贴账单</h2>
+            <p class="about-text">把表格或聊天里复制的文字整段粘进来，点「解析预览」，确认无误后再导入。</p>
+            <textarea class="dj-textarea" id="pasteArea" rows="4"
+                      placeholder="9.23早&#9;6.9&#9;100&#9;106.9&#9;9.24早&#9;102.3&#9;4.6 …"></textarea>
+            <div class="dj-actions">
+                <button class="neu-btn primary" type="button" id="btnParse">解析预览</button>
+                <button class="neu-btn" type="button" id="btnImport" disabled>确认导入</button>
+                <button class="neu-btn" type="button" id="btnPasteDemo">填入样例</button>
+            </div>
+            <div class="dj-table-wrap" id="previewWrap"></div>
+        </section>
+
+        <!-- 图表 -->
+        <section class="card">
+            <h2 class="card-title">近 30 天每日消耗（度）</h2>
+            <div class="dj-chart-box" id="barChart"></div>
+        </section>
+
+        <section class="card">
+            <h2 class="card-title">余额趋势（度）</h2>
+            <div class="dj-chart-box" id="lineChart"></div>
+        </section>
+
+        <!-- 流水 -->
+        <section class="card">
+            <h2 class="card-title">流水</h2>
+            <div class="dj-table-wrap" id="ledgerWrap"></div>
+        </section>
+
+        <!-- 同步与导出 -->
+        <section class="card">
+            <h2 class="card-title">同步与导出</h2>
+            <p class="about-text" id="syncState"></p>
+
+            <details class="dj-details">
+                <summary>数据仓库设置（不涉及任何凭据）</summary>
+                <label class="dj-field"><span>数据仓库（用户名/仓库名）</span>
+                    <input type="text" id="sRepo" placeholder="happysoysaucemin/dateofhappy">
+                </label>
+                <div class="dj-actions">
+                    <button class="neu-btn primary" type="button" id="btnSaveCfg">保存设置</button>
+                    <button class="neu-btn" type="button" id="btnPull">从云端拉取</button>
+                    <button class="neu-btn" type="button" id="btnPush">推送到云端</button>
+                    <button class="neu-btn" type="button" id="btnProbe">检查连接</button>
+                </div>
+                <p class="dj-hint">
+                    写入凭据来自上方的登录，不在本页存储。换成本机新浏览器时，只需重新登录一次。
+                </p>
+            </details>
+
+            <div class="dj-actions">
+                <button class="neu-btn" type="button" id="btnCsv">导出 CSV</button>
+                <button class="neu-btn" type="button" id="btnJson">导出 JSON</button>
+                <button class="neu-btn" type="button" id="btnMd">导出月报</button>
+            </div>
+            <p class="dj-hint" id="ioHint"></p>
+        </section>
+
+    </main>
+
+    <footer class="site-footer">© Happysoysauce</footer>
+
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/sha256.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/parse.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/netinfo.js"></script>
+<script src="js/store.js"></script>
+<script src="js/auth-table.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+
+</body>
+</html>

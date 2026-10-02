@@ -1,0 +1,99 @@
+/* 记电页面补充样式
+   站点 1551114.xyz/css/style.css 提供基础组件（container / card / card-title / about-text /
+   neu-btn / back-link / site-header / site-title / site-footer 等），
+   本文件只补充记电专属的表单、统计卡、流水表与图表样式，不改动站点任何既有文件。 */
+
+.header-sub { margin: 6px 0 0; opacity: .75; font-size: 14px; }
+.dj-hint { font-size: 13px; opacity: .75; margin: 8px 0 0; }
+.dj-empty { font-size: 13px; opacity: .65; margin: 12px 0; }
+.dj-ok { color: #3c9d5f; }
+.dj-warn { color: #d9534f; }
+
+.dj-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* ---------- 统计卡 ---------- */
+.dj-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+.dj-stat {
+  background: rgba(127, 127, 127, .08);
+  border: 1px solid rgba(127, 127, 127, .18);
+  border-radius: var(--radius, 10px);
+  padding: 10px 12px;
+}
+.dj-k { display: block; font-size: 12px; opacity: .7; }
+.dj-v { display: block; font-size: 20px; font-weight: 600; line-height: 1.25; margin-top: 4px; }
+.dj-v small { font-size: 12px; font-weight: 400; opacity: .7; margin-left: 4px; }
+.dj-stat.dj-alert { border-color: #d9534f; }
+.dj-stat.dj-alert .dj-v { color: #d9534f; }
+
+/* ---------- 表单 ---------- */
+.dj-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px 12px;
+}
+.dj-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.dj-field > span { opacity: .75; }
+.dj-field-wide { grid-column: 1 / -1; }
+.dj-field input,
+.dj-field select,
+.dj-textarea {
+  font: inherit;
+  font-size: 15px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border-radius: var(--radius, 10px);
+  border: 1px solid rgba(127, 127, 127, .35);
+  background: rgba(127, 127, 127, .06);
+  color: inherit;
+}
+.dj-textarea {
+  width: 100%;
+  margin-top: 8px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+/* ---------- 表格 ---------- */
+.dj-table-wrap { overflow-x: auto; }
+table.dj-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.dj-table th,
+table.dj-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(127, 127, 127, .2);
+  text-align: right;
+  white-space: nowrap;
+}
+table.dj-table th:first-child,
+table.dj-table td:first-child,
+table.dj-table th:nth-child(2),
+table.dj-table td:nth-child(2) { text-align: left; }
+table.dj-table thead th { font-weight: 600; opacity: .75; }
+tr.dj-bad td { color: #d9534f; }
+button.dj-del {
+  border: 0;
+  background: transparent;
+  color: #d9534f;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* ---------- 图表 ---------- */
+.dj-chart-box { margin-top: 8px; }
+.dj-chart { width: 100%; height: auto; display: block; }
+.dj-axis { stroke: currentColor; stroke-opacity: .25; stroke-width: 1; }
+.dj-bar { fill: var(--primary, #4a90d9); fill-opacity: .7; }
+.dj-bar-hi { fill-opacity: 1; }
+.dj-line { fill: none; stroke: var(--primary, #4a90d9); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.dj-dot { fill: var(--primary, #4a90d9); }
+.dj-axis-label { font-size: 8px; fill: currentColor; fill-opacity: .6; }
+
+/* ---------- 折叠区 ---------- */
+.dj-details summary { cursor: pointer; opacity: .85; font-size: 14px; margin: 6px 0; }
+.dj-details .dj-field { margin-top: 8px; }
