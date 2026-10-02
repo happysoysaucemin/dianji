@@ -27,12 +27,20 @@
   var DIGIT = '0123456789';
 
   var CONF = {
-    persist: 'session',  // 'session' = 存 sessionStorage（关浏览器即失效）；'memory' = 只在内存
+    persist: 'local',    // 'local' = 存 localStorage（关浏览器仍保持登录）；'session' = 会话级；'memory' = 只在内存
     table: []            // 由 js/auth-table.js 提供：[{ by, id, shift }]
   };
 
-  var SESS_KEY = 'dianji.v1.session';
+  var SESS_KEY = 'dianji.v1.credential';
   var mem = null;
+
+  function storeOf(kind) {
+    try {
+      if (kind === 'local') return localStorage;
+      if (kind === 'session') return sessionStorage;
+    } catch (e) { /* 隐私模式等 */ }
+    return null;
+  }
 
   // ---------------- 凯撒 ----------------
   function caesarChar(c, shift, dir) {
@@ -112,18 +120,23 @@
 
   // ---------------- 会话 ----------------
   function readSession() {
-    if (CONF.persist !== 'session') return null;
+    var st = storeOf(CONF.persist);
+    if (!st) return null;
     try {
-      var raw = sessionStorage.getItem(SESS_KEY);
+      var raw = st.getItem(SESS_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch (e) { return null; }
   }
   function writeSession(v) {
-    if (CONF.persist !== 'session') return;
-    try { sessionStorage.setItem(SESS_KEY, JSON.stringify(v)); } catch (e) { /* ignore */ }
+    var st = storeOf(CONF.persist);
+    if (!st) return;
+    try { st.setItem(SESS_KEY, JSON.stringify(v)); } catch (e) { /* ignore */ }
   }
   function clearSession() {
-    try { sessionStorage.removeItem(SESS_KEY); } catch (e) { /* ignore */ }
+    ['local', 'session'].forEach(function (kind) {
+      var st = storeOf(kind);
+      try { if (st) st.removeItem(SESS_KEY); } catch (e) { /* ignore */ }
+    });
   }
 
   function setCurrent(v) { mem = v; writeSession(v); }

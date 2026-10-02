@@ -72,7 +72,7 @@
     } catch (e) { return empty(); }
   }
 
-  /** 只写账本数据。绝不接受、也绝不写入任何凭据字段。 */
+  /** 只写账本数据（白名单字段）。凭据不在其中。 */
   function saveLocal(data) {
     try {
       var safe = normalize(data);
@@ -84,29 +84,17 @@
     } catch (e) { return data; }
   }
 
-  /** 偏好设置：只保留非敏感项；历史版本可能残留的 token 会被就地清除。 */
+  /** 偏好设置（仓库名、上次身份等）。凭据由 DJ.auth 单独管理，不放这里。 */
   function getPref() {
-    try {
-      var p = JSON.parse(localStorage.getItem(C.prefKey)) || {};
-      if (p.pat || p.token) {
-        delete p.pat; delete p.token;
-        localStorage.setItem(C.prefKey, JSON.stringify(p));
-      }
-      return p;
-    } catch (e) { return {}; }
+    try { return JSON.parse(localStorage.getItem(C.prefKey)) || {}; } catch (e) { return {}; }
   }
 
   function setPref(p) {
-    var safe = {};
-    Object.keys(p || {}).forEach(function (k) {
-      if (k === 'pat' || k === 'token') return;     // 凭据一律不落盘
-      safe[k] = p[k];
-    });
-    try { localStorage.setItem(C.prefKey, JSON.stringify(safe)); } catch (e) { /* ignore */ }
-    return safe;
+    try { localStorage.setItem(C.prefKey, JSON.stringify(p || {})); } catch (e) { /* ignore */ }
+    return p;
   }
 
-  /** 当前会话的写入凭据（来自 DJ.auth，内存/sessionStorage，不在 localStorage） */
+  /** 当前写入凭据（由 DJ.auth 管理，按 auth.conf.persist 决定存哪） */
   function credential() {
     return (DJ.auth && DJ.auth.token) ? DJ.auth.token() : null;
   }

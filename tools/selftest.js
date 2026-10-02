@@ -4,7 +4,7 @@
    覆盖：
      1. 纯 JS SHA-256 与 Node 内置 crypto 的一致性（含空串与跨块边界）
      2. 粘贴解析 + 消耗口径（用真实历史数据做验收）
-     3. 本机存储不含凭据 / 幂等合并 / 409 冲突自动重试
+     3. 本机存储（账本缓存不夹带凭据）/ 幂等合并 / 409 冲突自动重试
      4. 交错密码：凯撒字符集、生成、拆解、身份识别
      5. 上传环境：公网 IP 多源回退、内网尽力而为
    注意：[3] 与 [5] 都会替换 globalThis.fetch，因此所有依赖 fetch 的用例
@@ -16,7 +16,7 @@ var path = require('path');
 var crypto = require('crypto');
 
 var JS = path.join(__dirname, '..', 'js');
-['config.js', 'sha256.js', 'calc.js', 'parse.js', 'store.js', 'netinfo.js', 'auth-table.js', 'auth.js'].forEach(function (f) {
+['config.js', 'sha256.js', 'calc.js', 'parse.js', 'store.js', 'netinfo.js', 'device.js', 'auth-table.js', 'auth.js'].forEach(function (f) {
   require(path.join(JS, f));
 });
 var DJ = globalThis.DJ;
@@ -64,8 +64,8 @@ check('日均 12.78 度/天', DJ.calc.round2(stats.avg7) === 12.78, DJ.calc.roun
 check('43.0 度 = 21.5 元', stats.currentCny === 21.5, stats.currentCny);
 check('预计可用 ≈ 3.36 天', Math.abs(stats.daysLeft - 3.364) < 0.01, DJ.calc.round2(stats.daysLeft));
 
-// ================= 3. 本机存储不含凭据 + 合并 + 409 =================
-section('[3] 本机存储不含凭据 / 幂等合并 / 409 冲突重试');
+// ================= 3. 本机存储 + 合并 + 409 =================
+section('[3] 本机存储 / 幂等合并 / 409 冲突重试');
 var CFG = DJ.config;
 globalThis.localStorage = (function () {
   var d = {};
@@ -79,16 +79,14 @@ globalThis.localStorage = (function () {
 
 localStorage.setItem(CFG.prefKey, JSON.stringify({ repo: 'x/y', pat: 'SECRET_PAT', token: 'SECRET_TOKEN', me: '郑沐鑫' }));
 var pref = DJ.store.getPref();
-check('getPref 就地清除历史遗留的 pat/token', !pref.pat && !pref.token, JSON.stringify(pref));
-check('getPref 保留非敏感项 repo/me', pref.repo === 'x/y' && pref.me === '郑沐鑫');
+check('偏好读取正常', pref.repo === 'x/y' && pref.me === '郑沐鑫', JSON.stringify(pref));
 
-var saved = DJ.store.setPref({ repo: 'a/b', pat: 'SECRET_PAT', token: 'SECRET_TOKEN', me: '商叶航' });
-check('setPref 返回值里没有凭据', !saved.pat && !saved.token);
-check('setPref 未把凭据写进 localStorage',
-  String(localStorage.getItem(CFG.prefKey)).indexOf('SECRET') < 0, localStorage.getItem(CFG.prefKey));
+DJ.store.setPref({ repo: 'a/b', me: '商叶航' });
+check('偏好写入正常', DJ.store.getPref().repo === 'a/b');
 
+// 用户已允许凭证写入本机存储：账本缓存仍是白名单字段，不含任何凭据
 DJ.store.saveLocal({ version: 1, readings: [], pat: 'SECRET_PAT', token: 'SECRET_TOKEN', by: 'x' });
-check('saveLocal 未把凭据写进账本缓存',
+check('账本缓存仍是白名单字段，不夹带凭据',
   String(localStorage.getItem(CFG.localKey)).indexOf('SECRET') < 0);
 
 var docA = { version: 1, readings: [{ id: '2026-09-23T07:00', recorded_at: '2026-09-23T07:00+08:00', balance: 6.9, topup: 100 }] };
@@ -164,6 +162,56 @@ console.log('      你给的   = 2F3D4C5064778B99011203547556773889B02741792C439
 // ================= 5. 上传环境 =================
 section('[5] 上传环境：公网 IP 多源回退 / 内网尽力而为');
 var netCalls = [];
+
+// ================= 6. 设备信息与删除留痕 =================
+section('[6] 设备信息解析 / 删除留痕');
+var UA_CASES = [
+  ['iPhone',
+   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1',
+   'iOS 17.2', 'Safari 17', 'phone', ''],
+  ['Android 机型',
+   'Mozilla/5.0 (Linux; Android 13; SM-G9980 Build/TP1A.220624.014) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+   'Android 13', 'Chrome 120', 'phone', 'SM-G9980'],
+  ['Windows + Edge',
+   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+   'Windows 10/11', 'Edge 120', 'desktop', ''],
+  ['macOS Safari',
+   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+   'macOS 10.15', 'Safari 17', 'desktop', ''],
+  ['微信内置',
+   'Mozilla/5.0 (Linux; Android 12; V2162A Build/SP1A.210812.016) AppleWebKit/537.36 Chrome/107.0.0.0 Mobile Safari/537.36 MicroMessenger/8.0.40',
+   'Android 12', '微信 8', 'phone', 'V2162A']
+];
+UA_CASES.forEach(function (c) {
+  var r = DJ.device.parseUA(c[1]);
+  check('UA 解析[' + c[0] + '] 系统=' + c[2], r.os === c[2], r.os);
+  check('UA 解析[' + c[0] + '] 浏览器=' + c[3], r.browser === c[3], r.browser);
+  check('UA 解析[' + c[0] + '] 类型=' + c[4], r.type === c[4], r.type);
+  check('UA 解析[' + c[0] + '] 机型=' + (c[5] || '（无）'), r.model === c[5], r.model || '（无）');
+});
+check('解析空 UA 不抛错', (function () {
+  var r = DJ.device.parseUA('');
+  return r.os === '' && r.model === '' && r.browser === '';
+})());
+check('设备短描述拼接正确',
+  DJ.device.label({ model: 'SM-G9980', os: 'Android 13', browser: 'Chrome 120' }) === 'SM-G9980 · Android 13 · Chrome 120',
+  DJ.device.label({ model: 'SM-G9980', os: 'Android 13', browser: 'Chrome 120' }));
+
+var mixDocs = [
+  { id: '2026-09-23T07:00', recorded_at: '2026-09-23T07:00+08:00', balance: 6.9, topup: 100 },
+  { id: '2026-09-24T07:00', recorded_at: '2026-09-24T07:00+08:00', balance: 102.3, deleted_at: '2026-10-01T10:00:00+08:00', deleted_by: '郑沐鑫' },
+  { id: '2026-09-25T07:00', recorded_at: '2026-09-25T07:00+08:00', balance: 87.8 }
+];
+var alive = DJ.calc.enrich(mixDocs);
+check('软删除的记录不计入计算', alive.length === 2, alive.length);
+check('被删记录仍保留在原始数据里',
+  mixDocs.filter(function (r) { return r.deleted_at; }).length === 1);
+check('includeDeleted 可取出全部', DJ.calc.enrich(mixDocs, { includeDeleted: true }).length === 3);
+var stMix = DJ.calc.stats(alive, { allReadings: mixDocs });
+check('统计里报告已删除条数', stMix.deletedCount === 1, stMix.deletedCount);
+check('删除后按剩余序列重算消耗',
+  DJ.calc.round2(alive[1].consumed) === DJ.calc.round2(106.9 - 87.8),
+  alive[1].consumed);
 
 // ================= 异步部分（同一条链，避免 fetch mock 相互覆盖）=================
 var loginOk = 0, byMatched = 0, wrongRejected = 0;

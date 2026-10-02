@@ -31,6 +31,11 @@
   function shortTime(iso) {
     return String(iso || '').slice(5, 16).replace('T', ' ');
   }
+  function deviceLabel(rec) {
+    if (rec.device && DJ.device) return DJ.device.label(rec.device);
+    if (rec.device && rec.device.ua) return String(rec.device.ua).slice(0, 28) + '…';
+    return '';
+  }
   function loggedIn() {
     var c = DJ.auth.current();
     return !!(c && c.token);
@@ -72,12 +77,14 @@
       rec.ip_public = env.public || '';
       rec.ip_local = env.local || '';
     }
+    if (DJ.device) rec.device = DJ.device.collect();
     return rec;
   }
 
   // ---------------- 数据 ----------------
   function refresh() {
-    state.enr = U.enrich((state.data && state.data.readings) || []);
+    state.all = (state.data && state.data.readings) || [];
+    state.enr = U.enrich(state.all);
     renderStats();
     renderCharts();
     renderLedger();
@@ -190,7 +197,7 @@
   function renderStats() {
     var box = $('statGrid');
     if (!box) return;
-    var st = U.stats(state.enr, {});
+    var st = U.stats(state.enr, { allReadings: state.all || [] });
     state.stats = st;
 
     if (!st.count) {
@@ -214,6 +221,7 @@
     hint.push('共 ' + st.count + ' 条记录，最新一条：' + String(st.lastAt || '').slice(0, 16).replace('T', ' '));
     if (st.avg30) hint.push('近 30 日均耗 ' + fmtNum(st.avg30) + ' 度/天');
     if (st.anomalies) hint.push('⚠ 有 ' + st.anomalies + ' 条记录余额不降反升，可能是漏记充值');
+    if (st.deletedCount) hint.push('另有 ' + st.deletedCount + ' 条已删除（保留痕迹，不计入统计）');
     setHint('statHint', hint.join(' · '), st.anomalies ? false : null);
 
     var memberBox = $('memberStats');
@@ -241,7 +249,7 @@
 
     var h = ['<table class="dj-table"><thead><tr>',
       '<th>日期</th><th>时段</th><th>余额</th><th>充值</th><th>有效余额</th><th>本期消耗</th><th>折合</th>',
-      '<th>录入人</th><th>上传</th><th>IP</th><th>备注</th><th></th>',
+      '<th>录入人</th><th>上传</th><th>IP</th><th>设备</th><th>备注</th><th></th>',
       '</tr></thead><tbody>'];
     list.forEach(function (x) {
       h.push('<tr' + (x.anomaly ? ' class="dj-bad"' : '') + '>');
@@ -256,6 +264,7 @@
       h.push('<td>' + esc(shortTime(x.uploaded_at)) + '</td>');
       h.push('<td>' + esc(x.ip_public || '—') +
         (x.ip_local ? '<br><span class="dj-hint">' + esc(x.ip_local) + '</span>' : '') + '</td>');
+      h.push('<td>' + esc(deviceLabel(x)) + '</td>');
       h.push('<td>' + esc(x.note || '') + '</td>');
       h.push('<td><button class="dj-del" type="button" data-id="' + esc(x.id) + '" title="删除这条">×</button></td>');
       h.push('</tr>');
@@ -496,8 +505,12 @@
       var t = ev.target;
       if (!t || !t.classList.contains('dj-del')) return;
       var id = t.getAttribute('data-id');
-      if (!confirm('删除这条记录？')) return;
-      state.data.readings = (state.data.readings || []).filter(function (r) { return r.id !== id; });
+      if (!confirm('删除这条记录？记录不会被真正抹掉，会记下删除时间与操作人，只是不再计入统计。')) return;
+      var at = new Date().toISOString();
+      var who = currentBy() || '未署名';
+      (state.data.readings || []).forEach(function (r) {
+        if (r.id === id) { r.deleted_at = at; r.deleted_by = who; }
+      });
       persist();
     });
   }

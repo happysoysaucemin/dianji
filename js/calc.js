@@ -26,22 +26,27 @@
     });
   }
 
-  /** 计算派生字段，返回新数组（升序）。不修改入参。 */
-  function enrich(list) {
+  /** 计算派生字段，返回新数组（升序）。不修改入参。
+   *  默认跳过已软删除（带 deleted_at）的记录；传 { includeDeleted: true } 可一并算出来。 */
+  function enrich(list, opts) {
+    opts = opts || {};
+    var src = (list || []).filter(function (r) {
+      return opts.includeDeleted || !r.deleted_at;
+    });
     var prev = null;
-    return sortReadings(list).map(function (src) {
-      var balance = Number(src.balance) || 0;
-      var topup = Number(src.topup) || 0;
+    return sortReadings(src).map(function (src2) {
+      var balance = Number(src2.balance) || 0;
+      var topup = Number(src2.topup) || 0;
       var effective = round2(balance + topup);
       var consumed = prev === null ? null : round2(prev.effective - balance);
       var item = {
-        id: src.id || src.recorded_at,
-        recorded_at: src.recorded_at,
-        slot: src.slot || 'am',
+        id: src2.id || src2.recorded_at,
+        recorded_at: src2.recorded_at,
+        slot: src2.slot || 'am',
         balance: balance,
         topup: topup,
-        by: src.by || '',
-        note: src.note || '',
+        by: src2.by || '',
+        note: src2.note || '',
         effective: effective,
         consumed: consumed,
         anomaly: consumed !== null && consumed < -0.01   // 余额反而变多 → 可能漏记充值
@@ -79,7 +84,8 @@
       current: null, currentCny: null, lastAt: null,
       avg7: dailyAvg(enr, 7), avg30: dailyAvg(enr, 30),
       avgUsed: null, daysLeft: null, emptyDate: null, emptyDateStr: null,
-      monthTopup: 0, monthConsumed: 0, byMember: {}, anomalies: 0
+      monthTopup: 0, monthConsumed: 0, byMember: {}, anomalies: 0,
+      deletedCount: opts.allReadings ? opts.allReadings.filter(function (r) { return r.deleted_at; }).length : 0
     };
     if (!enr.length) return out;
 
