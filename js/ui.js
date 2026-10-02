@@ -215,15 +215,16 @@
     } catch (e) { /* 非 HTTPS 或浏览器不支持，忽略 */ }
   }
 
-  /** 一键同步：先把云端并入本机、再把合并结果推回去（失败不影响本机数据） */
+  /** 同步数据：把云端拉到本地并入（只读云端，不改动云端） */
   function onSync(btn) {
     return withBusy(btn, function () {
       var cfg = readSyncCfg();
       if (!cfg.pat) throw new Error('请先登录');
-      return DJ.store.push(cfg, state.data).then(function (merged) {
-        state.data = merged;
+      return DJ.store.ghRead(cfg).then(function (res) {
+        var before = (state.data.readings || []).length;
+        state.data = DJ.store.mergeMeta(res.data, state.data);
         persist();
-        setHint('loginHint', '同步完成（共 ' + (merged.readings || []).length + ' 条）', true);
+        setHint('loginHint', '已从云端同步（本机 ' + before + ' → ' + (state.data.readings || []).length + ' 条）', true);
       }).catch(function (e) {
         setHint('loginHint', '同步失败：' + (e && e.message ? e.message : e), false);
       });
