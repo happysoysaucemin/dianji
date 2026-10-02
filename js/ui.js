@@ -176,8 +176,25 @@
       rememberPassword(r.by, pwd);
       closeLogin();
       renderLogin();
-      setHint('loginHint', '已登录为 ' + (r.by || '未署名'), true);
+      setHint('loginHint', '已登录为 ' + (r.by || '未署名') + '，正在拉取云端数据…', true);
       envSnapshot();
+      autoPull();
+    });
+  }
+
+  /** 登录后自动从云端拉取并合并（失败不影响已建立的本机状态） */
+  function autoPull() {
+    var cfg = readSyncCfg();
+    if (!cfg.pat) return;
+    DJ.store.ghRead(cfg).then(function (res) {
+      var before = (state.data.readings || []).length;
+      state.data = DJ.store.mergeMeta(res.data, state.data);
+      persist();
+      var after = (state.data.readings || []).length;
+      setHint('loginHint', '已登录为 ' + currentBy() + '，云端已同步（本机 ' + before + ' → ' + after + ' 条）', true);
+    }).catch(function (e) {
+      setHint('loginHint', '已登录为 ' + currentBy() + '，但拉取云端数据失败：'
+        + (e && e.message ? e.message : e) + '（可稍后在「同步与导出」里手动拉取）', false);
     });
   }
 
@@ -563,7 +580,7 @@
 
   DJ.ui = {
     init: init, state: state, refresh: refresh, renderLogin: renderLogin,
-    renderSync: renderSync, stampEnv: stampEnv, openLogin: openLogin, closeLogin: closeLogin
+    renderSync: renderSync, stampEnv: stampEnv, openLogin: openLogin, closeLogin: closeLogin, autoPull: autoPull
   };
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
